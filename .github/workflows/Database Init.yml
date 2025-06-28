@@ -1,0 +1,25 @@
+name: Run Database Migrations
+
+on:
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install MySQL Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mysql-client
+
+      - name: Run Migration Script
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+        run: |
+          mysql --host="$DB_HOST" --user="$DB_USERNAME" --password="$DB_PASSWORD" "$DB_NAME" < migrations/create_schema.sql
