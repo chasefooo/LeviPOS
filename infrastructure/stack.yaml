@@ -1,0 +1,411 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Levi POS Platform Infrastructure
+  This template provisions resources for frontend hosting (S3 + CloudFront), a backend API (Lambda + API Gateway),
+  an RDS database, a Cognito Pool.
+
+  DBHostParameter:
+    Type: String
+    Description: "The RDS database host endpoint."
+Parameters:
+  FrontendBucketName:
+    Type: String
+    Default: "allproducepos-frontend-bucket"
+    Description: "Name of the S3 bucket to host the frontend assets."
+
+  ApiStageName:
+    Type: String
+    Default: prod
+    Description: "The stage name for the API Gateway deployment (e.g., prod, staging)"
+
+  DBName:
+    Type: String
+    Default: "POS"
+    Description: "The name of the database to create on deployment."
+
+  DBHostParameter:
+    Type: String
+    Default: "database-1.cl4yugag8mm0.us-east-2.rds.amazonaws.com"
+    Description: "The name of the database to create on deployment."
+
+  DBUsername:
+    Type: String
+    Default: "admin"
+    Description: "RDS Master Username"
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Description: "RDS Master Password"
+
+  SubnetId1:
+    Type: AWS::EC2::Subnet::Id
+    Default: "subnet-0d227b3b2c9955c1f"
+    Description: "First subnet ID for RDS."
+
+  SubnetId2:
+    Type: AWS::EC2::Subnet::Id
+    Default: "subnet-0952762a12b67ad16"
+    Description: "Second subnet ID for RDS."
+
+  VPCSecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: "sg-0756f2838e5903051"
+    Description: "Security Group ID for RDS instance."
+
+# Set at bottom of page dynamically
+#  CognitoPoolID:
+#    Type: String
+#    Default: "us-east-2_o7yhcWcxf"
+#    Description: "User Pool ID"
+
+Resources:
+
+  # Frontend Hosting Resources
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref FrontendBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: allproducepos-artifacts
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${FrontendBucketName}/*"
+
+#  GarrettGrowersImagesBucket:
+#    Type: AWS::S3::Bucket
+#    Properties:
+#      BucketName: garrettgrowers-images
+#      PublicAccessBlockConfiguration:
+#        BlockPublicAcls: false
+#        BlockPublicPolicy: false
+#        IgnorePublicAcls: false
+#        RestrictPublicBuckets: false
+#
+#  GarrettGrowersImagesBucketPolicy:
+#    Type: AWS::S3::BucketPolicy
+#    Properties:
+#      Bucket: garrettgrowers-images
+#      PolicyDocument:
+#        Version: "2012-10-17"
+#        Statement:
+#          - Sid: PublicReadGetObject
+#            Effect: Allow
+#            Principal: "*"
+#            Action: "s3:GetObject"
+#            Resource: !Sub "arn:aws:s3:::garrettgrowers-images/*"
+#          - Sid: DenyPutObjectIfNotAuthenticated
+#            Effect: Deny
+#            NotPrincipal:
+#              AWS:
+#                - !Sub "arn:aws:iam::164301059860:role/GarrettGrowersCognitoAuthRole"
+#            Action: "s3:PutObject"
+#            Resource: !Sub "arn:aws:s3:::garrettgrowers-images/*"
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Origins:
+          - Id: S3Origin
+            DomainName: !Sub "${FrontendBucket}.s3-website.${AWS::Region}.amazonaws.com"
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+              HTTPPort: 80
+              HTTPSPort: 443
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponsePagePath: /index.html
+            ResponseCode: 200
+            ErrorCachingMinTTL: 0
+
+  # Backend Lambda & API Gateway
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: LambdaExecutionRoleForGarrettGrowersPOS
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: LambdaBasicExecutionPolicyPOS
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - rds:Connect
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub arn:aws:s3:::${ArtifactsBucket}/*
+
+  BackendLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: POSBackendFunction
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return {
+              statusCode: 200,
+              body: JSON.stringify("Placeholder until GitHub deploys real code")
+            };
+          };
+      Environment:
+        Variables:
+          DB_HOST: !Ref DBHostParameter
+          DB_USERNAME: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
+          DB_NAME: !Ref DBName
+
+  ApiGatewayRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ALLPRODUCEPOSAPI
+
+  ApiGatewayResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: "backend"
+      RestApiId: !Ref ApiGatewayRestApi
+
+  # Cognito Authorizer for API
+#  CognitoAuth:
+#    Type: AWS::ApiGateway::Authorizer
+#    Properties:
+#      Name: CognitoAuth
+#      Type: COGNITO_USER_POOLS
+#      IdentitySource: method.request.header.Authorization
+#      RestApiId: !Ref ApiGatewayRestApi
+#      ProviderARNs:
+#        - !GetAtt CognitoUserPool.Arn
+
+  # Methods on the /backend resource protected by the Cognito authorizer
+  ApiGatewayMethodGET:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ResourceId: !Ref ApiGatewayResource
+      HttpMethod: GET
+      AuthorizationType: AWS_IAM
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BackendLambdaFunction.Arn}/invocations
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+
+  ApiGatewayMethodPOST:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ResourceId: !Ref ApiGatewayResource
+      HttpMethod: POST
+      AuthorizationType: AWS_IAM
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BackendLambdaFunction.Arn}/invocations
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+
+  ApiGatewayMethodPUT:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ResourceId: !Ref ApiGatewayResource
+      HttpMethod: PUT
+      AuthorizationType: AWS_IAM
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BackendLambdaFunction.Arn}/invocations
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+
+  # Proxy resource to handle subpaths (e.g., /backend/Cuc-Lb)
+  ApiGatewayProxyResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !Ref ApiGatewayResource
+      PathPart: "{proxy+}"
+
+  ApiGatewayMethodANY:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ResourceId: !Ref ApiGatewayProxyResource
+      HttpMethod: ANY
+      AuthorizationType: AWS_IAM
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BackendLambdaFunction.Arn}/invocations
+  ApiGatewayMethodOPTIONS:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ResourceId: !Ref ApiGatewayResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+
+  ApiGatewayProxyMethodOPTIONS:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ResourceId: !Ref ApiGatewayProxyResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,x-amz-date,x-amz-security-token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: [ ApiGatewayMethodPOST, ApiGatewayMethodPUT, ApiGatewayMethodANY, ApiGatewayMethodOPTIONS ]
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      StageName: !Ref ApiStageName
+
+  LambdaPermissionForAPIGateway:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref BackendLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/*
+
+  # RDS Resources
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Subnets available for RDS"
+      SubnetIds:
+        - !Ref SubnetId1
+        - !Ref SubnetId2
+
+  # Cognito for Authentication
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: ALLPRODUCEPOSUserPool
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: false
+          RequireSymbols: false
+
+  CognitoUserPoolGroupAdministrator:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: Administrator
+      UserPoolId: !Ref CognitoUserPool
+      Description: "Administrator group"
+
+  CognitoUserPoolGroupFarm:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: POS
+      UserPoolId: !Ref CognitoUserPool
+      Description: "POS group"
+
+  # SNS Topic for Notifications
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: ALLPRODUCEPOSNotifications
+
+Outputs:
+  WebsiteURL:
+    Description: "URL for the hosted frontend website via CloudFront"
+    Value: !Sub "https://${CloudFrontDistribution.DomainName}"
+  ApiEndpoint:
+    Description: "API Gateway endpoint for the backend"
+    Value: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/backend"
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
+  RDSEndpoint:
+    Description: "RDS Instance Endpoint"
+    Value: "database-1.cl4yugag8mm0.us-east-2.rds.amazonaws.com"

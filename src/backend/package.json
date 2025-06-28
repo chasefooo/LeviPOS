@@ -1,0 +1,13 @@
+{
+  "name": "farmcoop-backend",
+  "version": "1.0.0",
+  "description": "Lambda backend for GG POS Platform",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1692.0",
+    "mysql2": "^3.0.0"
+  },
+  "scripts": {
+    "package": "zip -r backend.zip ."
+  }
+}
