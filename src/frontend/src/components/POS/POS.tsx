@@ -1,407 +1,220 @@
 // src/components/POS.tsx
-import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Container,
     Group,
     Title,
     Button,
     Text,
-    Modal,
     Grid,
     Box,
-    Badge,
+    Popover,
+    TextInput,
+    Badge
 } from '@mantine/core';
-// Shared keypad layout for both Client ID and PIN entry
-const keypad = ['1','2','3','4','5','6','7','8','9','','0','C'];
-import { get, post, put } from 'aws-amplify/api';
 import { fetchUserAttributes } from 'aws-amplify/auth';
+import { post } from 'aws-amplify/api';
 
-type Step = 1 | 2 | 3 | 4 | 5;
+// Numeric keypad layout
+const keypad = ['1','2','3','4','5','6','7','8','9','','0','C'];
+
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 export default function POS() {
     const [step, setStep] = useState<Step>(1);
+    const [items, setItems] = useState<number[]>([]);
+    const [newPrice, setNewPrice] = useState('0.00');
+    const [timeLeft, setTimeLeft] = useState(45);
+    const [signupTimeout, setSignupTimeout] = useState<number>(20);
 
-    // shared state
-    const [amount, setAmount] = useState('0.00');
-    const [clientID, setClientID] = useState('');
-    const [pin, setPin] = useState('');
-    const [clientBalance, setClientBalance] = useState<number | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [locationID, setLocationID] = useState<string>('');
 
-    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    // Signup form state
+    const [showSignupPopover, setShowSignupPopover] = useState(false);
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
 
-    // timers
-    const [timeLeft, setTimeLeft] = useState(130);
-    const timerRef = useRef<NodeJS.Timeout>();
+    const inactivityRef = useRef<NodeJS.Timeout>();
+    const signupRef = useRef<NodeJS.Timeout>();
 
-    // Farm association state
-    const [hasFarm, setHasFarm] = useState<boolean | null>(null);
-    const [farmName, setFarmName] = useState<string>('');
-    const [farmID, setFarmID] = useState<number | null>(null);
-
-    // reset all
+    // Reset app
     const resetAll = () => {
         setStep(1);
-        setAmount('0.00');
-        setClientID('');
-        setPin('');
-        setClientBalance(null);
-        setError(null);
-        setTimeLeft(130);
-        clearInterval(timerRef.current);
+        setItems([]);
+        setNewPrice('0.00');
+        setTimeLeft(45);
+        clearInterval(inactivityRef.current);
+        clearInterval(signupRef.current);
+        setShowSignupPopover(false);
+        setSignupTimeout(20);
+        setName(''); setEmail(''); setPhone('');
     };
 
-    // Helper to start/reset the inactivity timer
-    const startTimer = () => {
-      clearInterval(timerRef.current);
-      setTimeLeft(130);
-      timerRef.current = setInterval(() => {
-        setTimeLeft((t) => {
-          if (t <= 1) {
-            // Timeout expired
-            if (confirmModalOpen) {
-              // Close confirm modal and clear amount
-              setConfirmModalOpen(false);
-              onClear();
-              return 130;
-            } else if (step === 1) {
-              // On main screen: clear amount
-              onClear();
-              return 130;
-            } else {
-              // On other steps: full reset
-              resetAll();
-              return 0;
-            }
-          }
-          return t - 1;
-        });
-      }, 1000);
+    // Inactivity timer
+    const startInactivity = () => {
+        clearInterval(inactivityRef.current);
+        setTimeLeft(45);
+        inactivityRef.current = setInterval(() => {
+            setTimeLeft((t) => {
+                if (t <= 1) { resetAll(); return 0; }
+                return t - 1;
+            });
+        }, 1000);
     };
 
-    // reset amount helper
-    const onClear = () => {
-      startTimer();
-      setAmount('0.00');
+    // Signup decision timer
+    const startSignupTimer = () => {
+        clearInterval(signupRef.current);
+        setSignupTimeout(20);
+        signupRef.current = setInterval(() => {
+            setSignupTimeout((t) => {
+                if (t <= 1) { resetAll(); return 0; }
+                return t - 1;
+            });
+        }, 1000);
     };
 
-    // Inactivity timer: reset on step or confirmModalOpen changes
+    // Fetch location
     useEffect(() => {
-      startTimer();
-      return () => clearInterval(timerRef.current);
-    }, [step, confirmModalOpen]);
-
-    // Determine farm from user's custom attribute and fetch its details
-    useEffect(() => {
-      (async () => {
-        try {
-          const attrs = await fetchUserAttributes();
-          const farmIdStr = attrs['custom:FarmID'];
-          if (!farmIdStr) {
-            setHasFarm(false);
-            return;
-          }
-          const id = parseInt(farmIdStr, 10);
-          setHasFarm(true);
-          setFarmID(id);
-          // fetch farm name
-          const detailRes = await get({
-            apiName: 'GarrettGrowersAPI',
-            path: `/farmprofiles/${id}`,
-          }).response;
-          const detailJson = await new Response((detailRes as any).body).json();
-          const farm = detailJson.farmProfile ?? detailJson;
-          setFarmName(farm.FarmName || farm.farmName || '');
-        } catch (e) {
-          console.error('Error resolving farm for user', e);
-          setHasFarm(false);
-        }
-      })();
+        (async () => {
+            try {
+                const attrs = await fetchUserAttributes();
+                const loc = attrs['custom:location'];
+                if (loc) setLocationID(loc);
+            } catch {}
+        })();
     }, []);
 
-    // keypad handler
+    // Reset inactivity on step change
+    useEffect(() => {
+        startInactivity();
+        return () => clearInterval(inactivityRef.current);
+    }, [step]);
+
+    // Start signup timer on signup prompt
+    useEffect(() => {
+        if (step === 5) startSignupTimer();
+        return () => clearInterval(signupRef.current);
+    }, [step]);
+
+    // Handle keypad input
     const onDigit = (d: string) => {
-        startTimer();
-        let clean = amount.replace('.', '');
-        if (clean.length >= 5) return; // max 999.99
-        if (d === '.') {
-            if (amount.includes('.')) return;
-            setAmount(amount + '.');
-        } else {
-            // append and reformat
-            if (amount === '0.00') clean = '';
-            clean += d;
-            while (clean.length < 3) clean = '0' + clean;
-            const dollars = clean.slice(0, -2);
-            const cents = clean.slice(-2);
-            setAmount(`${parseInt(dollars, 10)}.${cents}`);
+        startInactivity();
+        let str = newPrice.replace('.', '');
+        if (d === 'C') {
+            setNewPrice('0.00'); return;
         }
+        if (str.length >= 5) return;
+        str = str === '000' ? '' : str;
+        str += d;
+        while (str.length < 3) str = '0' + str;
+        const dollars = str.slice(0, -2);
+        const cents = str.slice(-2);
+        setNewPrice(`${parseInt(dollars)}.${cents}`);
     };
 
-    // Step 2: fetch balance
-    const onCheckout = () => {
-        startTimer();
-        setError(null);
-        setConfirmModalOpen(true);
+    // Add item
+    const onAdd = () => {
+        const val = parseFloat(newPrice);
+        setItems((arr) => [...arr, val]);
+        setNewPrice('0.00');
     };
 
-    // Step 3: verify PIN and handle wrapped/unwrapped responses
-    const onConfirmID = async () => {
-        setError(null);
+    const total = items.reduce((a,b) => a + b, 0);
+
+    // Complete transaction
+    const completePayment = async (method: string) => {
         try {
-            const res = await get({
-                apiName: 'GarrettGrowersAPI',
-                path: `/clients/${clientID}`,
-            }).response;
-            const data = await new Response((res as any).body).json();
-            // Handle wrapped vs. unwrapped response
-            const client = data.client ?? data;
-            // If client is marked inactive, show an error and do not proceed
-            if (client.Active === 0 || client.Active === false) {
-              setError('ClientID is no longer active with program. Please contact administration');
-              return;
-            }
-            if (!client || !client.ClientID) throw new Error('Client not found');
-            setClientBalance(Number(client.Balance));
-            setStep(3);
-        } catch (e: any) {
-            setError(e.message || 'Lookup failed');
-        }
-    };
-    const onConfirmPIN = async () => {
-        setError(null);
-        try {
-            const res = await get({
-                apiName: 'GarrettGrowersAPI',
-                path: `/clients/${clientID}`,
-            }).response;
-            const data = await new Response((res as any).body).json();
-            const client = data.client ?? data;
-            if (String(client.PIN) !== pin) {
-                setError('Incorrect PIN (birth year).');
-            } else {
-                setStep(4);
-            }
-        } catch (e: any) {
-            setError(e.message || 'Lookup failed');
-        }
-    };
-
-    // Step 4: perform charge
-    const onCharge = async () => {
-      setError(null);
-      const amt = parseFloat(amount);
-      if (clientBalance === null || farmID === null) return;
-      if (amt > clientBalance) {
+            const txRes = await post({ apiName: 'POSAPI', path: '/transactions', options: { body: JSON.stringify({ Total: total, TransactionDate: new Date().toISOString(), LocationID: locationID }), headers:{'Content-Type':'application/json'} } }).response;
+            const txJson = await new Response((txRes as any).body).json();
+            const txID = txJson.TransactionID;
+            await post({ apiName: 'POSAPI', path: '/payments', options: { body: JSON.stringify({ TransactionID: txID, Amount: total, PaymentMethod: method }), headers:{'Content-Type':'application/json'} } }).response;
+        } catch {}
         setStep(5);
-        return;
-      }
-      const newBal = clientBalance - amt;
-      try {
-        // Update client balance
-        await put({
-          apiName: 'GarrettGrowersAPI',
-          path: `/clients/${clientID}`,
-          options: {
-            body: JSON.stringify({ ClientID: clientID, Balance: newBal, PIN: pin }),
-            headers: { 'Content-Type': 'application/json' },
-          },
-        }).response;
-        // Create transaction record
-        await post({
-          apiName: 'GarrettGrowersAPI',
-          path: '/transactions',
-          options: {
-            body: JSON.stringify({
-              Total: amt,
-              TransactionDate: new Date().toISOString(),
-              FarmID: farmID,
-              ClientID: clientID
-            }),
-            headers: { 'Content-Type': 'application/json' },
-          },
-        }).response;
-        // On success
-        setClientBalance(newBal);
-        setStep(5);
-      } catch (e: any) {
-        setError('Transaction failed. Please contact the farm.');
-      }
     };
-
-    if (hasFarm === null) {
-      return <Container size="xs" style={{ textAlign: 'center' }}><Text>Loading...</Text></Container>;
-    }
-    if (hasFarm === false) {
-      return <Container size="xs" style={{ textAlign: 'center' }}><Text>No currently logged in farm</Text></Container>;
-    }
 
     return (
-        <>
-        <Modal
-          opened={confirmModalOpen}
-          onClose={() => setConfirmModalOpen(false)}
-          title="Confirm Amount"
-          centered
-        >
-          <Text>Charge amount: ${amount}</Text>
-          <Group mt="md" style={{ justifyContent: 'space-between' }}>
-            <Button onClick={() => { startTimer(); setConfirmModalOpen(false); }}>Cancel</Button>
-            <Button onClick={() => {
-                startTimer();
-                setConfirmModalOpen(false);
-                setStep(2);
-            }}>
-              Confirm
-            </Button>
-          </Group>
-        </Modal>
         <Container size="xs" style={{ textAlign: 'center', position: 'relative' }}>
-            <Title order={2} mb="sm">{farmName}</Title>
-            {step !== 1 && timeLeft <= 30 && (
-              <Badge color="red" variant="outline" mb="md">
-                Inactivity timeout in {timeLeft}s
-              </Badge>
+            {step !== 1 && (
+                <Badge color="red" variant="outline">Timeout in {timeLeft}s</Badge>
             )}
 
             {step === 1 && (
                 <>
-                    <Title order={3}>Enter Amount</Title>
-                    <Text size="xl">${amount}</Text>
+                    <Title order={3}>Enter Item Price</Title>
+                    <Text size="xl">${newPrice}</Text>
                     <Grid mt="md">
-                        {keypad.map((d, i) => (
+                        {keypad.map((d,i) => (
                             <Grid.Col span={4} key={i}>
-                                {d === '' ? (
-                                    // empty placeholder to maintain grid alignment
-                                    <Box />
-                                ) : (
-                                    <Button
-                                        fullWidth
-                                        size="xl"
-                                        color={d === 'C' ? 'red' : undefined}
-                                        onClick={() => (d === 'C' ? onClear() : onDigit(d))}
-                                    >
-                                        {d}
-                                    </Button>
+                                {d === '' ? <Box /> : (
+                                    <Button fullWidth size="xl" color={d==='C'?'red':undefined} onClick={() => onDigit(d)}>{d}</Button>
                                 )}
                             </Grid.Col>
                         ))}
                     </Grid>
-                    <Group mt="md" style={{ justifyContent: 'space-between' }}>
-                        <Button onClick={onCheckout}>Check Out</Button>
+                    <Group mt="md">
+                        <Button onClick={onAdd}>Add Item</Button>
+                        <Button onClick={() => setStep(2)}>Checkout</Button>
                     </Group>
+                    <Text mt="md">Items: {items.map((v,i) => `$${v.toFixed(2)}`).join(', ')}</Text>
+                    <Text mt="sm">Total: ${total.toFixed(2)}</Text>
                 </>
             )}
 
             {step === 2 && (
                 <>
-                    <Title order={3}>Enter Client ID</Title>
-                    <Text size="xl">{clientID || '____'}</Text>
-                    <Grid mt="md">
-                      {keypad.map((d, i) => (
-                        <Grid.Col span={4} key={i}>
-                          {d === '' ? (
-                            <Box />
-                          ) : (
-                            <Button
-                              fullWidth
-                              size="xl"
-                              color={d === 'C' ? 'red' : undefined}
-                              onClick={() => {
-                                if (d === 'C') {
-                                  setClientID('');
-                                } else {
-                                  setClientID(clientID + d);
-                                }
-                              }}
-                            >
-                              {d}
-                            </Button>
-                          )}
-                        </Grid.Col>
-                      ))}
-                    </Grid>
-                    <Group mt="md" style={{ justifyContent: 'space-between' }}>
-                        <Button color="red" onClick={() => setStep(1)}>Cancel</Button>
-                        <Button onClick={onConfirmID}>Confirm</Button>
+                    <Title order={3}>Select Payment Method</Title>
+                    <Group mt="md">
+                        <Button onClick={() => setStep(3)}>Cash</Button>
+                        <Button onClick={() => setStep(4)}>Credit, Debit or Apple Pay</Button>
                     </Group>
-                    {error && <Text color="red">{error}</Text>}
                 </>
             )}
 
             {step === 3 && (
                 <>
-                    <Title order={3}>Enter PIN (Birth Year)</Title>
-                    <Text size="xl">{pin.padEnd(4, '_')}</Text>
-                    <Grid mt="md">
-                      {keypad.map((d, i) => (
-                        <Grid.Col span={4} key={i}>
-                          {d === '' ? (
-                            <Box />
-                          ) : (
-                            <Button
-                              fullWidth
-                              size="xl"
-                              color={d === 'C' ? 'red' : undefined}
-                              onClick={() => {
-                                if (d === 'C') {
-                                  setPin('');
-                                } else if (pin.length < 4) {
-                                  setPin(pin + d);
-                                }
-                              }}
-                            >
-                              {d}
-                            </Button>
-                          )}
-                        </Grid.Col>
-                      ))}
-                    </Grid>
-                    <Group mt="md" style={{ justifyContent: 'space-between' }}>
-                        <Button color="red" onClick={() => setStep(2)}>Cancel</Button>
-                        <Button onClick={onConfirmPIN}>Confirm</Button>
+                    <Title order={4}>Please deposit:</Title>
+                    <Text size="xl" color="green">${total.toFixed(2)}</Text>
+                    <Text>into the cash box</Text>
+                    <Group mt="md">
+                        <Button onClick={() => completePayment('Cash')}>Continue</Button>
                     </Group>
-                    {error && <Text color="red">{error}</Text>}
                 </>
             )}
 
             {step === 4 && (
                 <>
-                    <Title order={3}>Ready to Charge</Title>
-                    <Text>Client: {clientID}</Text>
-                    <Text>Balance: ${clientBalance?.toFixed(2)}</Text>
-                    <Text>Charge: ${parseFloat(amount).toFixed(2)}</Text>
-                    <Text>Remaining: ${(clientBalance! - parseFloat(amount)).toFixed(2)}</Text>
-                    <Group mt="md">
-                        <Button onClick={() => setStep(3)}>Back</Button>
-                        <Button onClick={onCharge}>Confirm</Button>
-                    </Group>
-                    {error && <Text color="red" mt="sm">{error}</Text>}
+                    <Title order={4}>Please complete transaction on terminal</Title>
+                    <Button mt="md" onClick={() => completePayment('Card')}>Continue</Button>
                 </>
             )}
 
             {step === 5 && (
                 <>
-                    {parseFloat(amount) <= (clientBalance ?? 0) ? (
-                        <>
-                            <Title order={3}>Success!</Title>
-                            <Text>Charged ${parseFloat(amount).toFixed(2)} to {clientID}</Text>
-                            <Text>Remaining Balance: ${clientBalance?.toFixed(2)}</Text>
-                        </>
-                    ) : (
-                        <>
-                            <Title order={3}>Insufficient Funds</Title>
-                            <Text>You do not have enough balance.</Text>
-                        </>
-                    )}
-                    <Group mt="lg">
-                        <Button color="green" onClick={resetAll}>
-                            New Purchase
-                        </Button>
+                    <Title order={3}>Thank you for your purchase!</Title>
+                    <Text>Sign up for emails on new inventory and discounts?</Text>
+                    <Text mt="sm">{signupTimeout}s to decide</Text>
+                    <Group mt="md">
+                        <Button onClick={() => setStep(6)}>Yes</Button>
+                        <Button onClick={resetAll}>No</Button>
                     </Group>
                 </>
             )}
+
+            {step === 6 && (
+                <Popover opened onClose={resetAll} width={300} position="bottom" withArrow>
+                    <Popover.Target>
+                        <Button fullWidth mb="md">Enter Details</Button>
+                    </Popover.Target>
+                    <Popover.Dropdown>
+                        <TextInput label="Name" value={name} onChange={(e) => setName(e.currentTarget.value)} mb="sm" />
+                        <TextInput label="Email" value={email} onChange={(e) => setEmail(e.currentTarget.value)} mb="sm" />
+                        <TextInput label="Phone" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} mb="sm" />
+                        <Button fullWidth onClick={resetAll}>Submit</Button>
+                    </Popover.Dropdown>
+                </Popover>
+            )}
         </Container>
-        </>
     );
 }

@@ -5,24 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c7f210ea-9c66-4234-90b5-162f6af6e67a" name="Changes" comment="setup">
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/categories.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/categoryitems.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/customers.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/discountcategories.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/discountdays.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/discountitems.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/discounts.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/inventorylevels.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/items.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/locations.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/payments.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/backend/routes/transactionitems.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/frontend/src/components/DatabaseViews/Locations.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/frontend/src/components/DatabaseViews/Users.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/frontend/src/pages/Locations.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/frontend/src/pages/Users.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/backend/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/backend/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/backend/routes/administrators.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/backend/routes/clients.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/backend/routes/farms.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/backend/routes/transactions.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/backend/routes/transactions.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/migrations/create_schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/migrations/create_schema.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/frontend/src/components/POS/POS.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/frontend/src/components/POS/POS.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/frontend/src/configs/navigation.config/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/frontend/src/configs/navigation.config/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/frontend/src/configs/routes.config/routes.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/frontend/src/configs/routes.config/routes.config.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -33,6 +24,7 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="JavaScript File" />
+        <option value="TypeScript JSX File" />
       </list>
     </option>
   </component>
@@ -103,7 +95,7 @@
       <option name="presentableId" value="Default" />
       <updated>1750974337864</updated>
       <workItem from="1750974338934" duration="4850000" />
-      <workItem from="1751130561488" duration="12616000" />
+      <workItem from="1751130561488" duration="16402000" />
     </task>
     <task id="LOCAL-00001" summary="setup">
       <option name="closed" value="true" />
@@ -153,7 +145,15 @@
       <option name="project" value="LOCAL" />
       <updated>1751214174893</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="setup">
+      <option name="closed" value="true" />
+      <created>1751218564346</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1751218564346</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

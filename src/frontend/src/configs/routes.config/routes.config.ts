@@ -12,6 +12,24 @@ export const protectedRoutes = [
     authority: []
   },
   {
+    key: 'locations',
+    path: '/locations',
+    component: lazy(() => import('@/pages/Locations')),
+    authority: []
+  },
+  {
+    key: 'users',
+    path: '/users',
+    component: lazy(() => import('@/pages/Users')),
+    authority: []
+  },
+  {
+    key: 'terminals',
+    path: '/terminals',
+    // component: lazy(() => import('@/pages/Terminals')),
+    authority: []
+  },
+  {
     key: 'signout',
     path: '/signout',
     component: lazy(() => import('@/pages/SignOut')),
