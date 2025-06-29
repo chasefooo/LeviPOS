@@ -33,7 +33,7 @@ const AllRoutes = (props: ViewsProps) => {
                             <AuthorityGuard userAuthority={userAuthority} authority={route.authority}>
                                 <AppRoute
                                     routeKey={route.key}
-                                    component={route.component}
+                                    component={route.component!}
                                     {...route.authority}
                                 />
                             </AuthorityGuard>
@@ -48,7 +48,7 @@ const AllRoutes = (props: ViewsProps) => {
                         key={route.path}
                         path={route.path}
                         element={
-                            <AppRoute routeKey={route.key} component={route.component} />
+                            <AppRoute routeKey={route.key} component={route.component!} />
                         }
                     />
                 ))}
