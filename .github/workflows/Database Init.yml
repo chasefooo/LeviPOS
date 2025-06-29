@@ -22,4 +22,4 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: ${{ secrets.DB_NAME }}
         run: |
-          mysql --host="$DB_HOST" --user="$DB_USERNAME" --password="$DB_PASSWORD" --database="$DB_NAME" < migrations/create_schema.sql
+          mysql --host="$DB_HOST" --user="$DB_USERNAME" --password="$DB_PASSWORD" < migrations/create_schema.sql
