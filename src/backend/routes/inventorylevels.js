@@ -1,4 +1,4 @@
-// routes/transactions.js
+// routes/inventorylevels.js
 
 const getPool = require('../db');
 const corsHeaders = {
@@ -11,7 +11,7 @@ const corsHeaders = {
 exports.handler = async (event) => {
     const pool = getPool();
     const method = event.httpMethod;
-    const id = event.pathParameters.proxy;
+    const proxy = event.pathParameters.proxy; // expected format "LocationID,ItemID"
 
     if (method === 'OPTIONS') {
         return { statusCode: 200, headers: corsHeaders };
@@ -19,44 +19,38 @@ exports.handler = async (event) => {
 
     try {
         if (method === 'GET') {
-            if (id) {
+            if (proxy) {
+                const [loc, itm] = proxy.split(',');
                 const [rows] = await pool.query(
-                    'SELECT * FROM Transactions WHERE TransactionID = ?',
-                    [id]
+                    'SELECT * FROM InventoryLevels WHERE LocationID = ? AND ItemID = ?',
+                    [loc, itm]
                 );
                 return { statusCode: 200, body: JSON.stringify(rows[0] || {}), headers: corsHeaders };
             } else {
-                const [rows] = await pool.query('SELECT * FROM Transactions');
+                const [rows] = await pool.query('SELECT * FROM InventoryLevels');
                 return { statusCode: 200, body: JSON.stringify(rows), headers: corsHeaders };
             }
         } else if (method === 'POST') {
             let data = JSON.parse(event.body);
             if (typeof data === 'string') data = JSON.parse(data);
-            const columns = Object.keys(data);
-            const placeholders = columns.map(() => '?').join(',');
-            const values = columns.map(col => data[col]);
             await pool.query(
-                `INSERT INTO Transactions (${columns.join(',')}) VALUES (${placeholders})`,
-                values
+                'INSERT INTO InventoryLevels (LocationID, ItemID, Quantity) VALUES (?, ?, ?)',
+                [data.LocationID, data.ItemID, data.Quantity]
             );
             return { statusCode: 201, body: JSON.stringify({ message: 'Created' }), headers: corsHeaders };
         } else if (method === 'PUT') {
             let data = JSON.parse(event.body);
             if (typeof data === 'string') data = JSON.parse(data);
-            const idToUpdate = data.TransactionID || id;
-            const columns = Object.keys(data).filter(col => col !== 'TransactionID');
-            const assignments = columns.map(col => `${col} = ?`).join(',');
-            const values = columns.map(col => data[col]);
-            values.push(idToUpdate);
             await pool.query(
-                `UPDATE Transactions SET ${assignments} WHERE TransactionID = ?`,
-                values
+                'UPDATE InventoryLevels SET Quantity = ? WHERE LocationID = ? AND ItemID = ?',
+                [data.Quantity, data.LocationID, data.ItemID]
             );
             return { statusCode: 200, body: JSON.stringify({ message: 'Updated' }), headers: corsHeaders };
         } else if (method === 'DELETE') {
+            const [loc, itm] = proxy.split(',');
             await pool.query(
-                'DELETE FROM Transactions WHERE TransactionID = ?',
-                [id]
+                'DELETE FROM InventoryLevels WHERE LocationID = ? AND ItemID = ?',
+                [loc, itm]
             );
             return { statusCode: 200, body: JSON.stringify({ message: 'Deleted' }), headers: corsHeaders };
         } else {

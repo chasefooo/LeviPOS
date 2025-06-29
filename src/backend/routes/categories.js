@@ -1,4 +1,4 @@
-// routes/transactions.js
+// routes/categories.js
 
 const getPool = require('../db');
 const corsHeaders = {
@@ -21,12 +21,12 @@ exports.handler = async (event) => {
         if (method === 'GET') {
             if (id) {
                 const [rows] = await pool.query(
-                    'SELECT * FROM Transactions WHERE TransactionID = ?',
+                    'SELECT * FROM Categories WHERE CategoryID = ?',
                     [id]
                 );
                 return { statusCode: 200, body: JSON.stringify(rows[0] || {}), headers: corsHeaders };
             } else {
-                const [rows] = await pool.query('SELECT * FROM Transactions');
+                const [rows] = await pool.query('SELECT * FROM Categories');
                 return { statusCode: 200, body: JSON.stringify(rows), headers: corsHeaders };
             }
         } else if (method === 'POST') {
@@ -36,26 +36,26 @@ exports.handler = async (event) => {
             const placeholders = columns.map(() => '?').join(',');
             const values = columns.map(col => data[col]);
             await pool.query(
-                `INSERT INTO Transactions (${columns.join(',')}) VALUES (${placeholders})`,
+                `INSERT INTO Categories (${columns.join(',')}) VALUES (${placeholders})`,
                 values
             );
             return { statusCode: 201, body: JSON.stringify({ message: 'Created' }), headers: corsHeaders };
         } else if (method === 'PUT') {
             let data = JSON.parse(event.body);
             if (typeof data === 'string') data = JSON.parse(data);
-            const idToUpdate = data.TransactionID || id;
-            const columns = Object.keys(data).filter(col => col !== 'TransactionID');
+            const idToUpdate = data.CategoryID || id;
+            const columns = Object.keys(data).filter(col => col !== 'CategoryID');
             const assignments = columns.map(col => `${col} = ?`).join(',');
             const values = columns.map(col => data[col]);
             values.push(idToUpdate);
             await pool.query(
-                `UPDATE Transactions SET ${assignments} WHERE TransactionID = ?`,
+                `UPDATE Categories SET ${assignments} WHERE CategoryID = ?`,
                 values
             );
             return { statusCode: 200, body: JSON.stringify({ message: 'Updated' }), headers: corsHeaders };
         } else if (method === 'DELETE') {
             await pool.query(
-                'DELETE FROM Transactions WHERE TransactionID = ?',
+                'DELETE FROM Categories WHERE CategoryID = ?',
                 [id]
             );
             return { statusCode: 200, body: JSON.stringify({ message: 'Deleted' }), headers: corsHeaders };
