@@ -1,3 +1,7 @@
+-- Ensure the POS database exists and switch to it
+CREATE DATABASE IF NOT EXISTS `POS`;
+USE `POS`;
+
 -- 1. Locations
 CREATE TABLE IF NOT EXISTS Locations (
     LocationID INT AUTO_INCREMENT PRIMARY KEY,
