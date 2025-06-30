@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { Client, Environment } = require('square');
+const { Client } = require('square');
 
 // CORS helper (same as your other square routes)
 const corsHeaders = {
@@ -14,7 +14,7 @@ function attachCORS(response) {
 }
 
 const client = new Client({
-  environment: Environment.Production,
+  environment: 'Production',
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
 });
 const terminalApi = client.terminalApi;

@@ -1,6 +1,6 @@
 // routes/squareLocations.js
 
-const { Client, Environment } = require('square');
+const { Client } = require('square');
 
 // Reuse your global CORS headers
 const corsHeaders = {
@@ -16,7 +16,7 @@ function attachCORS(response) {
 
 // Initialize Square client once
 const squareClient = new Client({
-    environment: Environment.Production,
+    environment: 'Production',
     accessToken: process.env.SQUARE_ACCESS_TOKEN,
 });
 const locationsApi = squareClient.locationsApi;
