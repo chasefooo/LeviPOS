@@ -14,6 +14,9 @@ const categoryItemsHandler    = require('./routes/categoryitems');
 const discountCategoriesHandler = require('./routes/discountcategories');
 const discountDaysHandler     = require('./routes/discountdays');
 const listCognitoUsers        = require('./routes/listcognitouser');
+const squareLocationsHandler   = require('./routes/squarelocations');
+const squareDevicesHandler     = require('./routes/squaredevices');
+const squareDeviceCodesHandler = require('./routes/squaredevicecodes');
 
 const corsHeaders = {
     'Content-Type': 'application/json',
@@ -83,10 +86,6 @@ exports.handler = async (event, context) => {
                 response = await listCognitoUsers.handler(event);
                 break;
             case 'square':
-                // Lazy-require Square handlers only when needed
-                const squareLocationsHandler   = require('./routes/squarelocations');
-                const squareDevicesHandler     = require('./routes/squaredevices');
-                const squareDeviceCodesHandler = require('./routes/squaredevicecodes');
                 switch (proxy) {
                     case 'locations':
                         response = await squareLocationsHandler.handler(event);

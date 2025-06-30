@@ -1,5 +1,5 @@
 // routes/squareDevices.js
-const { Client, Environment } = require('square');
+const { Client, Environment } = require('@square/square');
 const client = new Client({ environment: Environment.Production,
     accessToken: process.env.SQUARE_ACCESS_TOKEN });
 const devicesApi = client.devicesApi;
