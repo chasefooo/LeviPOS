@@ -1,7 +1,22 @@
-// routes/squareDeviceCodes.js
+const crypto = require('crypto');
 const { Client, Environment } = require('square');
-const client = new Client({ environment: Environment.Production,
-    accessToken: process.env.SQUARE_ACCESS_TOKEN });
+
+// CORS helper (same as your other square routes)
+const corsHeaders = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Methods': 'OPTIONS,GET,POST,PUT,DELETE',
+};
+function attachCORS(response) {
+  response.headers = { ...corsHeaders, ...(response.headers || {}) };
+  return response;
+}
+
+const client = new Client({
+  environment: Environment.Production,
+  accessToken: process.env.SQUARE_ACCESS_TOKEN,
+});
 const terminalApi = client.terminalApi;
 
 exports.handler = async (event) => {
