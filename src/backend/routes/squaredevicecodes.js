@@ -1,5 +1,4 @@
-const crypto = require('crypto');
-const { Client } = require('square');
+const Square = require('square');
 
 // CORS helper (same as your other square routes)
 const corsHeaders = {
@@ -13,11 +12,11 @@ function attachCORS(response) {
   return response;
 }
 
-const client = new Client({
+const squareClient = new Square.Client({
   environment: 'Production',
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
 });
-const terminalApi = client.terminalApi;
+const terminalApi = squareClient.terminalApi;
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: corsHeaders };

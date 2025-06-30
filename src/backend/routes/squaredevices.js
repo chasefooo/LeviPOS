@@ -1,5 +1,5 @@
 // routes/squareDevices.js
-const { Client } = require('square');
+const Square = require('square');
 const corsHeaders = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
@@ -10,7 +10,7 @@ function attachCORS(response) {
   response.headers = { ...corsHeaders, ...(response.headers || {}) };
   return response;
 }
-const client = new Client({
+const client = new Square.Client({
   environment: 'Production',
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
 });
