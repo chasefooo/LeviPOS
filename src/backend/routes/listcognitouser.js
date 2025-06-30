@@ -94,8 +94,8 @@ exports.handler = async (event) => {
             let data = JSON.parse(event.body);
             if (typeof data === 'string') data = JSON.parse(data);
             const { Username, TemporaryPassword, given_name, family_name } = data;
-            // support custom:FarmID field as well
-            const farmId = data.FarmID ?? data['custom:FarmID'] ?? '';
+            // support custom:location field as well
+            const locationVal = data.location ?? data['custom:location'] ?? '';
             if (!Username || !TemporaryPassword) {
                 response = {
                     statusCode: 400,
@@ -110,7 +110,7 @@ exports.handler = async (event) => {
                     UserAttributes: [
                         { Name: 'given_name', Value: given_name || '' },
                         { Name: 'family_name', Value: family_name || '' },
-                        { Name: 'custom:FarmID', Value: farmId },
+                        { Name: 'custom:location', Value: locationVal },
                     ],
                     MessageAction: 'SUPPRESS', // Do not send welcome email automatically
                 };
@@ -135,9 +135,9 @@ exports.handler = async (event) => {
                 if (data.given_name != null) attrs.push({ Name: 'given_name', Value: data.given_name });
                 if (data.family_name != null) attrs.push({ Name: 'family_name', Value: data.family_name });
                 // support updating the custom attribute from either key
-                const farmId = data.FarmID ?? data['custom:FarmID'];
-                if (farmId != null) {
-                  attrs.push({ Name: 'custom:FarmID', Value: String(farmId) });
+                const locationVal = data.location ?? data['custom:location'];
+                if (locationVal != null) {
+                  attrs.push({ Name: 'custom:location', Value: String(locationVal) });
                 }
                 if (attrs.length === 0) {
                     response = {

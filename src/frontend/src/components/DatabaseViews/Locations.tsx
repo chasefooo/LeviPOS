@@ -10,7 +10,7 @@ import {
   Group,
   Loader
 } from '@mantine/core';
-import { get, put } from 'aws-amplify/api';
+import { get, post, put } from 'aws-amplify/api';
 
 interface Location {
   LocationID: number;
@@ -27,27 +27,30 @@ export default function Locations() {
   const [editing, setEditing] = useState<Location | null>(null);
   const [saving, setSaving] = useState(false);
   const [opened, setOpened] = useState(false);
+  const [isNew, setIsNew] = useState(false);
 
-  // Fetch all locations
+  // helper to refresh the list
+  const fetchLocations = async () => {
+    try {
+      const res = await get({ apiName: 'POSAPI', path: '/locations' }).response;
+      const list = await new Response((res as any).body).json();
+      setLocations(list);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     (async () => {
-      try {
-        const res = await get({
-          apiName: 'POSAPI',
-          path: '/locations',
-        }).response;
-        const list = await new Response((res as any).body).json();
-        setLocations(list);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
+      setLoading(true);
+      await fetchLocations();
+      setLoading(false);
     })();
   }, []);
 
   const openEditor = (loc: Location) => {
     setEditing({ ...loc });
+    setIsNew(false);
     setOpened(true);
   };
 
@@ -55,19 +58,27 @@ export default function Locations() {
     if (!editing) return;
     setSaving(true);
     try {
-      await put({
-        apiName: 'POSAPI',
-        path: `/locations/${editing.LocationID}`,
-        options: {
-          body: JSON.stringify(editing),
-          headers: { 'Content-Type': 'application/json' },
-        },
-      }).response;
-      setLocations((lst) =>
-        lst.map((l) =>
-          l.LocationID === editing.LocationID ? editing : l
-        )
-      );
+      if (isNew) {
+        await post({
+          apiName: 'POSAPI',
+          path: '/locations',
+          options: {
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(editing),
+          },
+        }).response;
+      } else {
+        await put({
+          apiName: 'POSAPI',
+          path: `/locations/${editing.LocationID}`,
+          options: {
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(editing),
+          },
+        }).response;
+      }
+      // refresh list and close popover
+      await fetchLocations();
       setOpened(false);
     } catch (e) {
       console.error(e);
@@ -86,6 +97,7 @@ export default function Locations() {
 
   const rows = locations.map((loc) => (
     <tr key={loc.LocationID}>
+      <td>{loc.LocationID}</td>
       <td>{loc.Name}</td>
       <td>{loc.Address}</td>
       <td>
@@ -98,12 +110,22 @@ export default function Locations() {
 
   return (
     <Container>
+      <Group style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <Button onClick={() => {
+          setEditing({ LocationID: 0, Name: '', Address: '', Phone: '', SquareLocation: '', Active: 1 });
+          setIsNew(true);
+          setOpened(true);
+        }}>
+          Add Location
+        </Button>
+      </Group>
       <Text size="xl" style={{ fontWeight: 500, marginBottom: 16 }}>
         Locations
       </Text>
-      <Table>
+      <Table style={{ width: '80%' }}>
         <thead>
           <tr>
+            <th>ID</th>
             <th>Name</th>
             <th>Address</th>
             <th />

@@ -62,7 +62,8 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: ${{ secrets.DB_NAME }}
           USER_POOL_ID: ${{ secrets.USER_POOL_ID }}
+          SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
         run: |
           aws lambda update-function-configuration \
             --function-name "$LAMBDA_FUNCTION_NAME" \
-            --environment "Variables={DB_HOST=$DB_HOST,DB_USERNAME=$DB_USERNAME,DB_PASSWORD=$DB_PASSWORD,DB_NAME=$DB_NAME,USER_POOL_ID=$USER_POOL_ID}"
+            --environment "Variables={DB_HOST=$DB_HOST,DB_USERNAME=$DB_USERNAME,DB_PASSWORD=$DB_PASSWORD,DB_NAME=$DB_NAME,USER_POOL_ID=$USER_POOL_ID,SQUARE_ACCESS_TOKEN=$SQUARE_ACCESS_TOKEN}"

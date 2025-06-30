@@ -1,75 +1,125 @@
 // index.js
 
-const locationHandler = require('./routes/locations');
-const customerHandler = require('./routes/customers');
-const itemHandler = require('./routes/items');
-const inventoryHandler = require('./routes/inventorylevels');
-const transactionHandler = require('./routes/transactions');
-const txItemsHandler = require('./routes/transactionitems');
-const paymentHandler = require('./routes/payments');
-const discountHandler = require('./routes/discounts');
-const discountItemsHandler = require('./routes/discountitems');
-const categoryHandler = require('./routes/categories');
-const categoryItemsHandler = require('./routes/categoryitems');
+const locationHandler         = require('./routes/locations');
+const customerHandler         = require('./routes/customers');
+const itemHandler             = require('./routes/items');
+const inventoryHandler        = require('./routes/inventorylevels');
+const transactionHandler      = require('./routes/transactions');
+const txItemsHandler          = require('./routes/transactionitems');
+const paymentHandler          = require('./routes/payments');
+const discountHandler         = require('./routes/discounts');
+const discountItemsHandler    = require('./routes/discountitems');
+const categoryHandler         = require('./routes/categories');
+const categoryItemsHandler    = require('./routes/categoryitems');
 const discountCategoriesHandler = require('./routes/discountcategories');
-const discountDaysHandler = require('./routes/discountdays');
-const listCognitoUsers = require('./routes/listcognitouser');
+const discountDaysHandler     = require('./routes/discountdays');
+const listCognitoUsers        = require('./routes/listcognitouser');
 
-exports.handler = async (event) => {
-    // Split path into segments and extract route + proxy
-    const segments = event.path.split('/').filter(Boolean);
-    const route = segments[1]?.toLowerCase() || '';
-    const proxy = segments.slice(2).join('/');
+const corsHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'OPTIONS,GET,POST,PUT,DELETE',
+};
+
+exports.handler = async (event, context) => {
+    console.log('Original event.path:', event.path);
+    const segments = event.path.split('/').filter(p => p !== '');
+    let route, proxy;
+    if (segments[1]?.toLowerCase() === 'backend') {
+        route = (segments[2] || '').toLowerCase();
+        proxy = segments[3] || '';
+    } else {
+        route = (segments[1] || '').toLowerCase();
+        proxy = segments[2] || '';
+    }
+    console.log('Determined route:', route);
+    console.log('Determined proxy:', proxy);
     event.pathParameters = { proxy };
 
     try {
+        let response;
         switch (route) {
             case 'locations':
-                return await locationHandler.handler(event);
+                response = await locationHandler.handler(event);
+                break;
             case 'customers':
-                return await customerHandler.handler(event);
+                response = await customerHandler.handler(event);
+                break;
             case 'items':
-                return await itemHandler.handler(event);
+                response = await itemHandler.handler(event);
+                break;
             case 'inventorylevels':
-                return await inventoryHandler.handler(event);
+                response = await inventoryHandler.handler(event);
+                break;
             case 'transactions':
-                return await transactionHandler.handler(event);
+                response = await transactionHandler.handler(event);
+                break;
             case 'transactionitems':
-                return await txItemsHandler.handler(event);
+                response = await txItemsHandler.handler(event);
+                break;
             case 'payments':
-                return await paymentHandler.handler(event);
+                response = await paymentHandler.handler(event);
+                break;
             case 'discounts':
-                return await discountHandler.handler(event);
+                response = await discountHandler.handler(event);
+                break;
             case 'discountitems':
-                return await discountItemsHandler.handler(event);
+                response = await discountItemsHandler.handler(event);
+                break;
             case 'categories':
-                return await categoryHandler.handler(event);
+                response = await categoryHandler.handler(event);
+                break;
             case 'categoryitems':
-                return await categoryItemsHandler.handler(event);
+                response = await categoryItemsHandler.handler(event);
+                break;
             case 'discountcategories':
-                return await discountCategoriesHandler.handler(event);
+                response = await discountCategoriesHandler.handler(event);
+                break;
             case 'discountdays':
-                return await discountDaysHandler.handler(event);
+                response = await discountDaysHandler.handler(event);
+                break;
             case 'listcognitouser':
-                return await listCognitoUsers.handler(event);
+                response = await listCognitoUsers.handler(event);
+                break;
+            case 'square':
+                // Lazy-require Square handlers only when needed
+                const squareLocationsHandler    = require('./routes/squareLocations');
+                const squareDevicesHandler      = require('./routes/squareDevices');
+                const squareDeviceCodesHandler  = require('./routes/squareDeviceCodes');
+
+                switch (proxy) {
+                    case 'locations':
+                        response = await squareLocationsHandler.handler(event);
+                        break;
+                    case 'devices':
+                        response = await squareDevicesHandler.handler(event);
+                        break;
+                    case 'devicecodes':
+                        response = await squareDeviceCodesHandler.handler(event);
+                        break;
+                    default:
+                        response = {
+                            statusCode: 404,
+                            body: JSON.stringify({ message: 'Square route not found' }),
+                        };
+                }
+                break;
             default:
-                return {
+                response = {
                     statusCode: 404,
                     body: JSON.stringify({ message: 'Route not found' }),
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    }
                 };
         }
+        // Attach CORS headers to whatever the handler returned
+        response.headers = { ...corsHeaders, ...(response.headers || {}) };
+        return response;
     } catch (err) {
+        // On error, return 500 with CORS
         return {
             statusCode: 500,
             body: JSON.stringify({ error: err.message }),
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
+            headers: corsHeaders,
         };
     }
 };

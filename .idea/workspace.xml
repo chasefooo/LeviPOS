@@ -5,8 +5,21 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c7f210ea-9c66-4234-90b5-162f6af6e67a" name="Changes" comment="setup">
+      <change afterPath="$PROJECT_DIR$/src/backend/routes/squaredevicecodes.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/backend/routes/squaredevices.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/backend/routes/squarelocations.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/frontend/src/components/DatabaseViews/Terminals.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/frontend/src/pages/Terminals.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.github/workflows/deployBackend.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/deployBackend.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.github/workflows/deployFrontend.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/deployFrontend.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/frontend/src/components/Layout/Views.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/frontend/src/components/Layout/Views.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/backend/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/backend/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/backend/routes/listcognitouser.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/backend/routes/listcognitouser.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/backend/routes/locations.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/backend/routes/locations.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/frontend/src/components/DatabaseViews/Locations.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/frontend/src/components/DatabaseViews/Locations.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/frontend/src/components/DatabaseViews/Users.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/frontend/src/components/DatabaseViews/Users.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/frontend/src/configs/routes.config/routes.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/frontend/src/configs/routes.config/routes.config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/frontend/src/constants/aws-exports.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/frontend/src/constants/aws-exports.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -16,8 +29,9 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="JavaScript File" />
+        <option value="TypeScript File" />
         <option value="TypeScript JSX File" />
+        <option value="JavaScript File" />
       </list>
     </option>
   </component>
@@ -58,6 +72,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
+    "npm.dev.executor": "Run",
     "ts.external.directory.path": "/Users/chasesisler/WebstormProjects/LeviPOS/src/frontend/node_modules/typescript/lib",
     "vue.rearranger.settings.migration": "true"
   },
@@ -71,6 +86,18 @@
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
     </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="dev" type="js.build_tools.npm" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/src/frontend/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="dev" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
@@ -88,7 +115,7 @@
       <option name="presentableId" value="Default" />
       <updated>1750974337864</updated>
       <workItem from="1750974338934" duration="4850000" />
-      <workItem from="1751130561488" duration="17083000" />
+      <workItem from="1751130561488" duration="29824000" />
     </task>
     <task id="LOCAL-00001" summary="setup">
       <option name="closed" value="true" />
@@ -154,7 +181,15 @@
       <option name="project" value="LOCAL" />
       <updated>1751225706748</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="setup">
+      <option name="closed" value="true" />
+      <created>1751237101181</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1751237101181</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

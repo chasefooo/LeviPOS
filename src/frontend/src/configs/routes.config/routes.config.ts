@@ -26,7 +26,7 @@ export const protectedRoutes = [
   {
     key: 'terminals',
     path: '/terminals',
-    // component: lazy(() => import('@/pages/Terminals')),
+    component: lazy(() => import('@/pages/Terminals')),
     authority: []
   },
   {

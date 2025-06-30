@@ -7,27 +7,30 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'OPTIONS,GET,POST,PUT,DELETE'
 };
+function attachCORS(response) {
+  response.headers = { ...corsHeaders, ...(response.headers || {}) };
+  return response;
+}
 
 exports.handler = async (event) => {
     const pool = getPool();
     const method = event.httpMethod;
     const id = event.pathParameters.proxy;
-
-    if (method === 'OPTIONS') {
-        return { statusCode: 200, headers: corsHeaders };
-    }
+    let response;
 
     try {
-        if (method === 'GET') {
+        if (method === 'OPTIONS') {
+          response = { statusCode: 200, body: '' };
+        } else if (method === 'GET') {
             if (id) {
                 const [rows] = await pool.query(
                     'SELECT * FROM Locations WHERE LocationID = ?',
                     [id]
                 );
-                return { statusCode: 200, body: JSON.stringify(rows[0] || {}), headers: corsHeaders };
+                response = { statusCode: 200, body: JSON.stringify(rows[0] || {}) };
             } else {
                 const [rows] = await pool.query('SELECT * FROM Locations');
-                return { statusCode: 200, body: JSON.stringify(rows), headers: corsHeaders };
+                response = { statusCode: 200, body: JSON.stringify(rows) };
             }
         } else if (method === 'POST') {
             let data = JSON.parse(event.body);
@@ -39,7 +42,7 @@ exports.handler = async (event) => {
                 `INSERT INTO Locations (${columns.join(',')}) VALUES (${placeholders})`,
                 values
             );
-            return { statusCode: 201, body: JSON.stringify({ message: 'Created' }), headers: corsHeaders };
+            response = { statusCode: 201, body: JSON.stringify({ message: 'Created' }) };
         } else if (method === 'PUT') {
             let data = JSON.parse(event.body);
             if (typeof data === 'string') data = JSON.parse(data);
@@ -52,22 +55,21 @@ exports.handler = async (event) => {
                 `UPDATE Locations SET ${assignments} WHERE LocationID = ?`,
                 values
             );
-            return { statusCode: 200, body: JSON.stringify({ message: 'Updated' }), headers: corsHeaders };
+            response = { statusCode: 200, body: JSON.stringify({ message: 'Updated' }) };
         } else if (method === 'DELETE') {
             await pool.query('DELETE FROM Locations WHERE LocationID = ?', [id]);
-            return { statusCode: 200, body: JSON.stringify({ message: 'Deleted' }), headers: corsHeaders };
+            response = { statusCode: 200, body: JSON.stringify({ message: 'Deleted' }) };
         } else {
-            return {
+            response = {
                 statusCode: 405,
-                body: JSON.stringify({ message: 'Method Not Allowed' }),
-                headers: corsHeaders
+                body: JSON.stringify({ message: 'Method Not Allowed' })
             };
         }
     } catch (err) {
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: err.message }),
-            headers: corsHeaders
-        };
+      response = {
+        statusCode: 500,
+        body: JSON.stringify({ error: err.message }),
+      };
     }
+    return attachCORS(response);
 };

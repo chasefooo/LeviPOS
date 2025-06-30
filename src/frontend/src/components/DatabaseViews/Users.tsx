@@ -1,5 +1,3 @@
-
-
 // src/components/DatabaseViews/Users.tsx
 import React, { useState, useEffect } from 'react';
 import {
@@ -40,7 +38,7 @@ export default function Users() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await get({ apiName: 'GarrettGrowersAPI', path: '/listcognitouser' }).response;
+      const res = await get({ apiName: 'POSAPI', path: '/listcognitouser' }).response;
       const json = await new Response((res as any).body).json();
       const list: any[] = json.users || json;
       const normalized = list.map((u) => ({
@@ -48,7 +46,7 @@ export default function Users() {
         given_name: u.given_name,
         family_name: u.family_name,
         groups: u.groups || u.Groups || [],
-        location: u.location || u['custom:location'] || '',
+        location: u['custom:location'] || '',
       }));
       setUsers(normalized);
     } catch (err) {
@@ -95,12 +93,12 @@ export default function Users() {
     setSaving(true);
     try {
       await put({
-        apiName: 'GarrettGrowersAPI',
+        apiName: 'POSAPI',
         path: `/listcognitouser/${selectedUser.username}`,
         options: {
           body: JSON.stringify({
             groups: editAdmin ? ['Administrator'] : [],
-            location: editLocation,
+            'custom:location': editLocation,
           }),
           headers: { 'Content-Type': 'application/json' },
         },
@@ -118,11 +116,9 @@ export default function Users() {
     const locLabel = locations.find((l) => l.value === u.location)?.label || '';
     return (
       <tr key={u.username} onClick={() => openEdit(u)} style={{ cursor: 'pointer' }}>
-        <td style={{ padding: 8 }}>{u.username}</td>
-        <td style={{ padding: 8 }}>{u.given_name}</td>
-        <td style={{ padding: 8 }}>{u.family_name}</td>
-        <td style={{ padding: 8 }}>{locLabel}</td>
-        <td style={{ padding: 8, textAlign: 'center' }}>
+        <td style={{ padding: 16 }}>{u.username}</td>
+        <td style={{ padding: 16 }}>{locLabel}</td>
+        <td style={{ padding: 16, textAlign: 'center' }}>
           <Checkbox checked={u.groups?.includes('Administrator')} readOnly />
         </td>
       </tr>
@@ -139,11 +135,9 @@ export default function Users() {
         <Table striped highlightOnHover withColumnBorders>
           <thead>
             <tr>
-              <th>Username</th>
-              <th>First Name</th>
-              <th>Last Name</th>
-              <th>Location</th>
-              <th style={{ textAlign: 'center' }}>Admin</th>
+              <th style={{ padding: '16px' }}>Username</th>
+              <th style={{ padding: '16px' }}>Location</th>
+              <th style={{ padding: '16px', textAlign: 'center' }}>Admin</th>
             </tr>
           </thead>
           <tbody>{rows}</tbody>
