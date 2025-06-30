@@ -1,5 +1,5 @@
 // routes/squareDeviceCodes.js
-const { Client, Environment } = require('@square/square');
+const { Client, Environment } = require('square');
 const client = new Client({ environment: Environment.Production,
     accessToken: process.env.SQUARE_ACCESS_TOKEN });
 const terminalApi = client.terminalApi;

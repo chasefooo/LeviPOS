@@ -1,6 +1,6 @@
 // routes/squareLocations.js
 
-const { Client, Environment } = require('@square/square');
+const { Client, Environment } = require('square');
 
 // Reuse your global CORS headers
 const corsHeaders = {
