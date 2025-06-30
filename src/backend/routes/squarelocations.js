@@ -22,15 +22,22 @@ const squareClient = new Client({
 const locationsApi = squareClient.locationsApi;
 
 exports.handler = async (event) => {
-    console.log('TRACE squareLocations.handler:', event.httpMethod, 'proxy:', event.pathParameters?.proxy);
+    // 1) Log entry + critical context
+    console.log('squareLocations.handler ▶ entry', {
+        httpMethod: event.httpMethod,
+        fullPath: event.path,
+        proxy: event.pathParameters?.proxy,
+        tokenLoaded: !!process.env.SQUARE_ACCESS_TOKEN,
+    });
 
-    // Preflight
+    // 2) Handle preflight right away
     if (event.httpMethod === 'OPTIONS') {
+        console.log('squareLocations.handler ◀ preflight');
         return attachCORS({ statusCode: 200, body: '' });
     }
 
-    // Only allow GET here
     if (event.httpMethod !== 'GET') {
+        console.warn('squareLocations.handler ◀ bad method', event.httpMethod);
         return attachCORS({
             statusCode: 405,
             body: JSON.stringify({ message: 'Method Not Allowed' }),
@@ -38,18 +45,27 @@ exports.handler = async (event) => {
     }
 
     try {
+        // 3) Log before calling Square
+        console.log('squareLocations.handler ▶ calling listLocations()');
         const resp = await locationsApi.listLocations();
-        const list = resp.result.locations || [];
-        console.log(`Square returned ${list.length} locations`);
+
+        // 4) Log the raw SDK response
+        console.log('squareLocations.handler ▶ Square SDK response:', resp);
+
+        const locations = resp.result.locations || [];
+        console.log(`squareLocations.handler ◀ returning ${locations.length} locations`);
+
         return attachCORS({
             statusCode: 200,
-            body: JSON.stringify(list),
+            body: JSON.stringify(locations),
         });
+
     } catch (err) {
-        console.error('ERROR in squareLocations.handler:', err);
+        // 5) Detailed error logging
+        console.error('squareLocations.handler ✖ ERROR', err.stack || err);
         return attachCORS({
             statusCode: 500,
-            body: JSON.stringify({ error: err.message }),
+            body: JSON.stringify({ error: err.message || 'Unknown error' }),
         });
     }
 };

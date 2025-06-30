@@ -84,10 +84,9 @@ exports.handler = async (event, context) => {
                 break;
             case 'square':
                 // Lazy-require Square handlers only when needed
-                const squareLocationsHandler    = require('./routes/squareLocations');
-                const squareDevicesHandler      = require('./routes/squareDevices');
-                const squareDeviceCodesHandler  = require('./routes/squareDeviceCodes');
-
+                const squareLocationsHandler   = require('./routes/squarelocations');
+                const squareDevicesHandler     = require('./routes/squaredevices');
+                const squareDeviceCodesHandler = require('./routes/squaredevicecodes');
                 switch (proxy) {
                     case 'locations':
                         response = await squareLocationsHandler.handler(event);
@@ -115,6 +114,8 @@ exports.handler = async (event, context) => {
         response.headers = { ...corsHeaders, ...(response.headers || {}) };
         return response;
     } catch (err) {
+        // Log full error for debugging
+        console.error('index.handler ERROR:', err.stack || err);
         // On error, return 500 with CORS
         return {
             statusCode: 500,

@@ -5,7 +5,8 @@
   "main": "index.js",
   "dependencies": {
     "aws-sdk": "^2.1692.0",
-    "mysql2": "^3.0.0"
+    "mysql2": "^3.0.0",
+    "square": "^43.0.0"
   },
   "scripts": {
     "package": "zip -r backend.zip ."
