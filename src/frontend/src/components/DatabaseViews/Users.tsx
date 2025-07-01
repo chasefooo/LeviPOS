@@ -14,7 +14,7 @@ import {
   Button,
   TextInput,
 } from '@mantine/core';
-import { get, put } from 'aws-amplify/api';
+import { get, put, post } from 'aws-amplify/api';
 
 export interface UserRecord {
   username: string;
@@ -33,6 +33,13 @@ export default function Users() {
   const [editAdmin, setEditAdmin] = useState(false);
   const [editLocation, setEditLocation] = useState<string>('');
   const [saving, setSaving] = useState(false);
+
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newGivenName, setNewGivenName] = useState('');
+  const [newFamilyName, setNewFamilyName] = useState('');
+  const [newLocation, setNewLocation] = useState('');
 
   // Fetch users
   const fetchUsers = async () => {
@@ -86,25 +93,55 @@ export default function Users() {
   const closeEdit = () => {
     setEditModalOpened(false);
     setSelectedUser(null);
+    setIsNewUser(false);
+  };
+
+  const openNew = () => {
+    setIsNewUser(true);
+    setNewUsername('');
+    setNewPassword('');
+    setNewGivenName('');
+    setNewFamilyName('');
+    setNewLocation('');
+    setEditModalOpened(true);
   };
 
   const handleSave = async () => {
-    if (!selectedUser) return;
     setSaving(true);
     try {
-      await put({
-        apiName: 'POSAPI',
-        path: `/listcognitouser/${selectedUser.username}`,
-        options: {
-          body: JSON.stringify({
-            groups: editAdmin ? ['Administrator'] : [],
-            'custom:location': editLocation,
-          }),
-          headers: { 'Content-Type': 'application/json' },
-        },
-      }).response;
-      closeEdit();
-      fetchUsers();
+      if (isNewUser) {
+        // Create new user
+        const body = JSON.stringify({
+          Username: newUsername,
+          TemporaryPassword: newPassword,
+          given_name: newGivenName,
+          family_name: newFamilyName,
+          location: newLocation,
+        });
+        await post({
+          apiName: 'POSAPI',
+          path: '/listcognitouser',
+          options: { body, headers: { 'Content-Type': 'application/json' } },
+        }).response;
+      } else if (selectedUser) {
+        // Update existing user
+        const bodyPayload: any = {
+          groups: editAdmin ? ['Administrator'] : [],
+          'custom:location': editLocation,
+        };
+        await put({
+          apiName: 'POSAPI',
+          path: `/listcognitouser/${selectedUser.username}`,
+          options: {
+            body: JSON.stringify(bodyPayload),
+            headers: { 'Content-Type': 'application/json' },
+          },
+        }).response;
+      }
+      setEditModalOpened(false);
+      setSelectedUser(null);
+      setIsNewUser(false);
+      await fetchUsers();
     } catch (err) {
       console.error(err);
     } finally {
@@ -130,6 +167,7 @@ export default function Users() {
       <LoadingOverlay visible={loading} />
       <Group style={{ marginBottom: 16 }}>
         <Title order={2}>Users</Title>
+        <Button onClick={openNew}>New User</Button>
       </Group>
       <ScrollArea style={{ height: 'calc(100% - 60px)' }}>
         <Table striped highlightOnHover withColumnBorders>
@@ -144,21 +182,65 @@ export default function Users() {
         </Table>
       </ScrollArea>
 
-      <Modal opened={editModalOpened} onClose={closeEdit} title="Edit User">
-        {selectedUser && (
+      <Modal
+        opened={editModalOpened}
+        onClose={closeEdit}
+        title={isNewUser ? 'New User' : 'Edit User'}
+      >
+        {(isNewUser || selectedUser) && (
           <>
-            <TextInput label="Username" value={selectedUser.username} disabled mb="sm" />
-            <Checkbox
-              label="Administrator"
-              checked={editAdmin}
-              onChange={(e) => setEditAdmin(e.currentTarget.checked)}
-              mb="sm"
-            />
+            {isNewUser ? (
+              <>
+                <TextInput
+                  label="Username"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.currentTarget.value)}
+                  mb="sm"
+                />
+                <TextInput
+                  label="Temporary Password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.currentTarget.value)}
+                  mb="sm"
+                />
+                <TextInput
+                  label="Given Name"
+                  value={newGivenName}
+                  onChange={(e) => setNewGivenName(e.currentTarget.value)}
+                  mb="sm"
+                />
+                <TextInput
+                  label="Family Name"
+                  value={newFamilyName}
+                  onChange={(e) => setNewFamilyName(e.currentTarget.value)}
+                  mb="sm"
+                />
+              </>
+            ) : (
+              <>
+                <TextInput
+                  label="Username"
+                  value={selectedUser!.username}
+                  disabled
+                  mb="sm"
+                />
+                <Checkbox
+                  label="Administrator"
+                  checked={editAdmin}
+                  onChange={(e) => setEditAdmin(e.currentTarget.checked)}
+                  mb="sm"
+                />
+              </>
+            )}
             <Select
               label="Location"
               data={locations}
-              value={editLocation}
-              onChange={(val) => setEditLocation(val || '')}
+              value={isNewUser ? newLocation : editLocation}
+              onChange={(val) => {
+                if (isNewUser) setNewLocation(val || '');
+                else setEditLocation(val || '');
+              }}
               mb="sm"
               clearable
             />

@@ -1,6 +1,7 @@
 // routes/squareLocations.js
 
-const Square = require('square');
+// Support both CommonJS default and named exports
+const { SquareClient, SquareEnvironment, SquareError } = require('square');
 
 // Reuse your global CORS headers
 const corsHeaders = {
@@ -15,11 +16,10 @@ function attachCORS(response) {
 }
 
 // Initialize Square client once
-const squareClient = new Square.Client({
-    environment: 'Production',
-    accessToken: process.env.SQUARE_ACCESS_TOKEN,
+const client = new SquareClient({
+    token: process.env.SQUARE_ACCESS_TOKEN,
+    environment: SquareEnvironment.Production,
 });
-const locationsApi = squareClient.locationsApi;
 
 exports.handler = async (event) => {
     // 1) Log entry + critical context
@@ -46,13 +46,13 @@ exports.handler = async (event) => {
 
     try {
         // 3) Log before calling Square
-        console.log('squareLocations.handler ▶ calling listLocations()');
-        const resp = await locationsApi.listLocations();
+        console.log('squareLocations.handler ▶ calling client.locations.list()');
+        const listResponse = await client.locations.list();
 
         // 4) Log the raw SDK response
-        console.log('squareLocations.handler ▶ Square SDK response:', resp);
+        console.log('squareLocations.handler ▶ Square SDK response:', listResponse);
 
-        const locations = resp.result.locations || [];
+        const locations = listResponse.locations || [];
         console.log(`squareLocations.handler ◀ returning ${locations.length} locations`);
 
         return attachCORS({
@@ -63,6 +63,9 @@ exports.handler = async (event) => {
     } catch (err) {
         // 5) Detailed error logging
         console.error('squareLocations.handler ✖ ERROR', err.stack || err);
+        if (err instanceof SquareError && err.errors) {
+          console.error('SquareError details:', err.errors);
+        }
         return attachCORS({
             statusCode: 500,
             body: JSON.stringify({ error: err.message || 'Unknown error' }),

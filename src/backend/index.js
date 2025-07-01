@@ -17,6 +17,7 @@ const listCognitoUsers        = require('./routes/listcognitouser');
 const squareLocationsHandler   = require('./routes/squarelocations');
 const squareDevicesHandler     = require('./routes/squaredevices');
 const squareDeviceCodesHandler = require('./routes/squaredevicecodes');
+const squareCheckoutsHandler   = require('./routes/squarecheckouts');
 
 const corsHeaders = {
     'Content-Type': 'application/json',
@@ -95,6 +96,9 @@ exports.handler = async (event, context) => {
                         break;
                     case 'devicecodes':
                         response = await squareDeviceCodesHandler.handler(event);
+                        break;
+                    case 'checkouts':
+                        response = await squareCheckoutsHandler.handler(event);
                         break;
                     default:
                         response = {

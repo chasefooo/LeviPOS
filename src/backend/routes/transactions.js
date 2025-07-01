@@ -35,11 +35,15 @@ exports.handler = async (event) => {
             const columns = Object.keys(data);
             const placeholders = columns.map(() => '?').join(',');
             const values = columns.map(col => data[col]);
-            await pool.query(
+            const [result] = await pool.query(
                 `INSERT INTO Transactions (${columns.join(',')}) VALUES (${placeholders})`,
                 values
             );
-            return { statusCode: 201, body: JSON.stringify({ message: 'Created' }), headers: corsHeaders };
+            return {
+                statusCode: 201,
+                body: JSON.stringify({ TransactionID: result.insertId }),
+                headers: corsHeaders
+            };
         } else if (method === 'PUT') {
             let data = JSON.parse(event.body);
             if (typeof data === 'string') data = JSON.parse(data);

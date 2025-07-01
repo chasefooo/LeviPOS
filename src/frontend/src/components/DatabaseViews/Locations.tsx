@@ -8,7 +8,8 @@ import {
   Popover,
   TextInput,
   Group,
-  Loader
+  Loader,
+  Select
 } from '@mantine/core';
 import { get, post, put } from 'aws-amplify/api';
 
@@ -28,8 +29,22 @@ export default function Locations() {
   const [saving, setSaving] = useState(false);
   const [opened, setOpened] = useState(false);
   const [isNew, setIsNew] = useState(false);
+  const [sqOptions, setSqOptions] = useState<{ value: string; label: string }[]>([]);
 
   // helper to refresh the list
+  const fetchSquareLocations = async () => {
+    try {
+      const res = await get({ apiName: 'POSAPI', path: '/square/locations' }).response;
+      const list = await new Response((res as any).body).json();
+      setSqOptions((list || []).map((loc: any) => ({
+        value: loc.id,
+        label: loc.name,
+      })));
+    } catch (e) {
+      console.error('Error loading square locations', e);
+    }
+  };
+
   const fetchLocations = async () => {
     try {
       const res = await get({ apiName: 'POSAPI', path: '/locations' }).response;
@@ -44,6 +59,7 @@ export default function Locations() {
     (async () => {
       setLoading(true);
       await fetchLocations();
+      await fetchSquareLocations();
       setLoading(false);
     })();
   }, []);
@@ -97,10 +113,10 @@ export default function Locations() {
 
   const rows = locations.map((loc) => (
     <tr key={loc.LocationID}>
-      <td>{loc.LocationID}</td>
-      <td>{loc.Name}</td>
-      <td>{loc.Address}</td>
-      <td>
+      <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{loc.LocationID}</td>
+      <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{loc.Name}</td>
+      <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{loc.Address}</td>
+      <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
         <Button size="xs" onClick={() => openEditor(loc)}>
           Edit
         </Button>
@@ -122,13 +138,13 @@ export default function Locations() {
       <Text size="xl" style={{ fontWeight: 500, marginBottom: 16 }}>
         Locations
       </Text>
-      <Table style={{ width: '80%' }}>
+      <Table style={{ width: '100%', tableLayout: 'auto' }}>
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Address</th>
-            <th />
+            <th style={{ padding: '12px', whiteSpace: 'nowrap' }}>ID</th>
+            <th style={{ padding: '12px', whiteSpace: 'nowrap' }}>Name</th>
+            <th style={{ padding: '12px', whiteSpace: 'nowrap' }}>Address</th>
+            <th style={{ padding: '12px', whiteSpace: 'nowrap' }} />
           </tr>
         </thead>
         <tbody>{rows}</tbody>
@@ -173,11 +189,13 @@ export default function Locations() {
                 }
                 mb="sm"
               />
-              <TextInput
-                label="SquareLocation"
+              <Select
+                label="Square Location"
+                data={sqOptions}
                 value={editing.SquareLocation}
-                disabled
+                onChange={(val) => setEditing({ ...editing, SquareLocation: val || '' })}
                 mb="sm"
+                clearable
               />
               <Group style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
                 <Button
