@@ -153,29 +153,29 @@ export default function POS() {
 
     // Poll Square checkout status every 5 seconds when on step 4
     useEffect(() => {
-      if (step === 4 && checkoutId) {
-        clearInterval(pollRef.current);
-        pollRef.current = setInterval(async () => {
-          try {
-            const res = await get({
-              apiName: 'POSAPI',
-              path: `/square/checkouts/${checkoutId}`,
-            }).response;
-            const json = await new Response((res as any).body).json();
-            const status = json.checkout?.status ?? json.status;
-            if (status === 'COMPLETED') {
-              clearInterval(pollRef.current);
-              setStep(5);
-            } else if (status === 'CANCELED' || status === 'ERROR') {
-              clearInterval(pollRef.current);
-              resetAll();
-            }
-          } catch (err) {
-            console.error('Error polling checkout status', err);
-          }
-        }, 5000);
-      }
-      return () => clearInterval(pollRef.current);
+        if (step === 4 && checkoutId) {
+            clearInterval(pollRef.current);
+            pollRef.current = setInterval(async () => {
+                try {
+                    const res = await get({
+                        apiName: 'POSAPI',
+                        path: `/square/checkouts/${checkoutId}`,
+                    }).response;
+                    const json = await new Response((res as any).body).json();
+                    const status = json.checkout?.status ?? json.status;
+                    if (status === 'COMPLETED') {
+                        clearInterval(pollRef.current);
+                        setStep(5);
+                    } else if (status === 'CANCELED' || status === 'ERROR') {
+                        clearInterval(pollRef.current);
+                        resetAll();
+                    }
+                } catch (err) {
+                    console.error('Error polling checkout status', err);
+                }
+            }, 5000);
+        }
+        return () => clearInterval(pollRef.current);
     }, [step, checkoutId]);
 
     // Handle keypad input
@@ -222,18 +222,18 @@ export default function POS() {
                 // Build and log Square checkout payload
                 const amountMoney = { amount: Math.round(total * 100), currency: 'USD' };
                 const checkoutPayload = {
-                  idempotencyKey: `${Date.now()}`,
-                  amountMoney,
-                  deviceOptions: { deviceId: terminalDeviceId },
+                    idempotencyKey: `${Date.now()}`,
+                    amountMoney,
+                    deviceOptions: { deviceId: terminalDeviceId },
                 };
                 console.log('checkout payload ▶', checkoutPayload);
                 const checkoutResOp = post({
-                  apiName: 'POSAPI',
-                  path: '/square/checkouts',
-                  options: {
-                    body: JSON.stringify(checkoutPayload),
-                    headers: { 'Content-Type': 'application/json' },
-                  },
+                    apiName: 'POSAPI',
+                    path: '/square/checkouts',
+                    options: {
+                        body: JSON.stringify(checkoutPayload),
+                        headers: { 'Content-Type': 'application/json' },
+                    },
                 });
                 const checkoutRes = await checkoutResOp.response;
                 const checkoutJson = await new Response((checkoutRes as any).body).json();
@@ -242,9 +242,9 @@ export default function POS() {
                 const generatedId = checkoutJson.checkout?.id ?? '';
                 console.log('resolved checkoutId ▶', generatedId);
                 if (generatedId) {
-                  setCheckoutId(generatedId);
+                    setCheckoutId(generatedId);
                 } else {
-                  console.warn('No checkout.id found in response', checkoutJson);
+                    console.warn('No checkout.id found in response', checkoutJson);
                 }
                 setStep(4);
                 startInactivity();
@@ -269,7 +269,7 @@ export default function POS() {
             console.log('completePayment ▶ transaction response:', txJson);
             const txID = txJson.TransactionID ?? txJson.id ?? txJson.transactionID;
             if (!txID) {
-              throw new Error(`Missing TransactionID in response: ${JSON.stringify(txJson)}`);
+                throw new Error(`Missing TransactionID in response: ${JSON.stringify(txJson)}`);
             }
             const payOp = post({
                 apiName: 'POSAPI',
@@ -328,6 +328,14 @@ export default function POS() {
 
     return (
         <Container size="xs" style={{ textAlign: 'center', position: 'relative' }}>
+            <Group mb="sm" style={{ justifyContent: 'center' }}>
+                <Title
+                    order={2}
+                    style={{ fontWeight: 700, marginBottom: '0.5rem' }}
+                >
+                    Self Serve Check Out
+                </Title>
+            </Group>
             {locationName && (
                 <Group mb="sm" style={{ justifyContent: 'center' }}>
                     <Title order={4}>{locationName}</Title>
@@ -355,7 +363,7 @@ export default function POS() {
                         <Button onClick={() => { onAdd(); setStep(2); }}>Checkout</Button>
                     </Group>
                     <Text size="xl" style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
-                      {`Total: $${total.toFixed(2)}`}
+                        {`Total: $${(items.reduce((a,b) => a + b, 0) + parseFloat(newPrice)).toFixed(2)}`}
                     </Text>
                     <Box mt="md">
                         {items.map((v, i) => (
@@ -441,11 +449,11 @@ export default function POS() {
                     <Text>into the cash box</Text>
                     <Group mt="md">
                         <Button
-                          onClick={() => completePayment('Cash')}
-                          disabled={isProcessingPayment}
-                          loading={isProcessingPayment}
+                            onClick={() => completePayment('Cash')}
+                            disabled={isProcessingPayment}
+                            loading={isProcessingPayment}
                         >
-                          Continue
+                            Continue
                         </Button>
                     </Group>
                 </>
