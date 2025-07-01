@@ -8,8 +8,6 @@ import {
     Text,
     Grid,
     Box,
-    Popover,
-    TextInput,
     Badge
 } from '@mantine/core';
 import { fetchUserAttributes } from 'aws-amplify/auth';
@@ -25,7 +23,6 @@ export default function POS() {
     const [items, setItems] = useState<number[]>([]);
     const [newPrice, setNewPrice] = useState('0.00');
     const [timeLeft, setTimeLeft] = useState(60);
-    const [signupTimeout, setSignupTimeout] = useState<number>(20);
 
     const [locationID, setLocationID] = useState<string>('');
     const [locationName, setLocationName] = useState<string>('');
@@ -33,22 +30,16 @@ export default function POS() {
 
     // Prevent double-submission
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-    const [isSavingCustomer, setIsSavingCustomer] = useState(false);
-
-    // Signup form state
-    const [showSignupPopover, setShowSignupPopover] = useState(false);
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [phone, setPhone] = useState('');
 
     // Store active checkout for possible cancellation
     const [checkoutId, setCheckoutId] = useState<string>('');
+    // Polling interval ref
+    const pollRef = useRef<NodeJS.Timeout>();
 
     const [terminalDeviceId, setTerminalDeviceId] = useState<string>('');
     const [terminalDeviceCodeId, setTerminalDeviceCodeId] = useState<string>('');
 
     const inactivityRef = useRef<NodeJS.Timeout>();
-    const signupRef = useRef<NodeJS.Timeout>();
 
     // Reset app
     const resetAll = () => {
@@ -57,10 +48,6 @@ export default function POS() {
         setNewPrice('0.00');
         setTimeLeft(60);
         clearInterval(inactivityRef.current);
-        clearInterval(signupRef.current);
-        setShowSignupPopover(false);
-        setSignupTimeout(20);
-        setName(''); setEmail(''); setPhone('');
     };
 
     // Inactivity timer
@@ -78,17 +65,6 @@ export default function POS() {
         }, 1000);
     };
 
-    // Signup decision timer
-    const startSignupTimer = () => {
-        clearInterval(signupRef.current);
-        setSignupTimeout(20);
-        signupRef.current = setInterval(() => {
-            setSignupTimeout((t) => {
-                if (t <= 1) { resetAll(); return 0; }
-                return t - 1;
-            });
-        }, 1000);
-    };
 
     // Fetch location
     useEffect(() => {
@@ -123,15 +99,33 @@ export default function POS() {
         if (!squareLocationID) return;
         (async () => {
             try {
-                // fetch devices
+                // fetch devices and select the one for the current Square location
                 const devRes = await get({ apiName: 'POSAPI', path: '/square/devices' }).response;
                 const devJson = await new Response((devRes as any).body).json();
-                const terminal = (devJson || []).find((d: any) => d.attributes?.type === 'TERMINAL');
-                const deviceId = terminal?.id?.replace('device:', '') || '';
+                // Debug log devJson and squareLocationID
+                console.debug('Square Devices:', devJson, 'squareLocationID:', squareLocationID);
+                // Trim and uppercase squareLocationID for comparison
+                const matchLocID = squareLocationID.trim().toUpperCase();
+                const terminal = (devJson || []).find((d: any) =>
+                    d.attributes?.type === 'TERMINAL' &&
+                    d.components?.some((c: any) =>
+                        (c.applicationDetails?.sessionLocation?.trim?.().toUpperCase?.() ?? '') === matchLocID
+                    )
+                );
+                if (!terminal) {
+                    console.warn('No matching terminal found for Square Location ID:', squareLocationID, 'in devices:', devJson);
+                    setTerminalDeviceId('');
+                    setTerminalDeviceCodeId('');
+                    return;
+                }
+                const deviceId = terminal.id?.replace('device:', '') || '';
                 setTerminalDeviceId(deviceId);
 
-                // extract device code ID from device components
-                const codeComp = terminal?.components?.find((c: any) => c.applicationDetails?.deviceCodeId);
+                // extract the deviceCodeId for this location
+                const codeComp = terminal.components?.find((c: any) =>
+                    (c.applicationDetails?.sessionLocation?.trim?.().toUpperCase?.() ?? '') === matchLocID &&
+                    c.applicationDetails?.deviceCodeId
+                );
                 const codeId = codeComp?.applicationDetails?.deviceCodeId || '';
                 setTerminalDeviceCodeId(codeId);
             } catch (err) {
@@ -140,23 +134,49 @@ export default function POS() {
         })();
     }, [squareLocationID]);
 
-    // Reset inactivity on step change
+    // Reset inactivity on step change, but only start timeout if there's at least one item
     useEffect(() => {
-        startInactivity();
+        // clear any existing timer
+        clearInterval(inactivityRef.current);
+        if (items.length > 0) {
+            startInactivity();
+        }
         return () => clearInterval(inactivityRef.current);
-    }, [step]);
+    }, [step, items.length]);
 
-    // Start signup timer on signup prompt
-    useEffect(() => {
-        if (step === 5) startSignupTimer();
-        return () => clearInterval(signupRef.current);
-    }, [step]);
 
     useEffect(() => {
         if (step === 4) {
             completePayment('Card');
         }
     }, [step]);
+
+    // Poll Square checkout status every 5 seconds when on step 4
+    useEffect(() => {
+      if (step === 4 && checkoutId) {
+        clearInterval(pollRef.current);
+        pollRef.current = setInterval(async () => {
+          try {
+            const res = await get({
+              apiName: 'POSAPI',
+              path: `/square/checkouts/${checkoutId}`,
+            }).response;
+            const json = await new Response((res as any).body).json();
+            const status = json.checkout?.status ?? json.status;
+            if (status === 'COMPLETED') {
+              clearInterval(pollRef.current);
+              setStep(5);
+            } else if (status === 'CANCELED' || status === 'ERROR') {
+              clearInterval(pollRef.current);
+              resetAll();
+            }
+          } catch (err) {
+            console.error('Error polling checkout status', err);
+          }
+        }, 5000);
+      }
+      return () => clearInterval(pollRef.current);
+    }, [step, checkoutId]);
 
     // Handle keypad input
     const onDigit = (d: string) => {
@@ -268,30 +288,15 @@ export default function POS() {
         }
     };
 
-    const saveCustomer = async () => {
-        if (isSavingCustomer) return;
-        setIsSavingCustomer(true);
-        try {
-            await post({
-                apiName: 'POSAPI',
-                path: '/customers',
-                options: {
-                    body: JSON.stringify({
-                        CustomerID: email,
-                        Name: name,
-                        Email: email,
-                        Phone: phone,
-                    }),
-                    headers: { 'Content-Type': 'application/json' },
-                },
-            });
-            resetAll();
-        } catch (error) {
-            console.error('Error saving customer:', error);
-        } finally {
-            setIsSavingCustomer(false);
+    // After thank you, auto-reset after 20 seconds
+    useEffect(() => {
+        if (step === 5) {
+            const timer = setTimeout(() => {
+                resetAll();
+            }, 20000);
+            return () => clearTimeout(timer);
         }
-    };
+    }, [step]);
 
     // Handle timeout and cancellation
     useEffect(() => {
@@ -456,37 +461,8 @@ export default function POS() {
             {step === 5 && (
                 <>
                     <Title order={3}>Thank you for your purchase!</Title>
-                    <Text>Sign up for emails on new inventory and discounts?</Text>
-                    <Text mt="sm">{signupTimeout}s to decide</Text>
-                    <Group mt="md">
-                        <Button onClick={() => setStep(6)}>Yes</Button>
-                        <Button onClick={resetAll}>No</Button>
-                    </Group>
                 </>
             )}
-
-            {/*
-            {step === 6 && (
-                <Popover opened onClose={resetAll} width={300} position="bottom" withArrow>
-                    <Popover.Target>
-                        <Button fullWidth mb="md">Enter Details</Button>
-                    </Popover.Target>
-                    <Popover.Dropdown>
-                        <TextInput label="Name" value={name} onChange={(e) => setName(e.currentTarget.value)} mb="sm" />
-                        <TextInput label="Email" value={email} onChange={(e) => setEmail(e.currentTarget.value)} mb="sm" />
-                        <TextInput label="Phone" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} mb="sm" />
-                        <Button
-                          fullWidth
-                          onClick={saveCustomer}
-                          disabled={isSavingCustomer}
-                          loading={isSavingCustomer}
-                        >
-                          Submit
-                        </Button>
-                    </Popover.Dropdown>
-                </Popover>
-            )}
-            */}
         </Container>
     );
 }

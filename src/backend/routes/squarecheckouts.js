@@ -32,6 +32,35 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') {
         return attachCORS({ statusCode: 200, body: '' });
     }
+
+    // handle GET retrieve route for checkout status
+    if (event.httpMethod === 'GET') {
+        const segments = event.path.split('/').filter(p => p !== '');
+        const checkoutId = segments.pop();
+        console.info('squareCheckouts.handler ▶ retrieve checkoutId', checkoutId);
+        try {
+            const getRes = await client.terminal.checkouts.get({ checkoutId });
+            console.info('squareCheckouts.handler ◀ retrieve response', getRes);
+            return attachCORS({
+                statusCode: 200,
+                body: JSON.stringify(getRes, (_, v) => typeof v === 'bigint' ? v.toString() : v),
+            });
+        } catch (retrieveErr) {
+            console.error('squareCheckouts.handler ✖ retrieve ERROR', retrieveErr.stack || retrieveErr);
+            if (retrieveErr instanceof SquareError && retrieveErr.errors) {
+                console.error('SquareError details:', retrieveErr.errors);
+                return attachCORS({
+                    statusCode: 502,
+                    body: JSON.stringify({ errors: retrieveErr.errors }),
+                });
+            }
+            return attachCORS({
+                statusCode: 500,
+                body: JSON.stringify({ error: retrieveErr.message || 'Retrieve error' }),
+            });
+        }
+    }
+
     if (event.httpMethod !== 'POST') {
         return attachCORS({
             statusCode: 405,
